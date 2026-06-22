@@ -18,7 +18,8 @@ class Member(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='tenant_memberships'
+        related_name='tenant_memberships',
+        unique=True
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
@@ -27,8 +28,7 @@ class Member(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        # User can only have one membership per tenant schema
-        unique_together = ('user',)
+        pass
 
     def __str__(self):
         return f"{self.user.username} ({self.role})"

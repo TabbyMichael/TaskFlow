@@ -34,10 +34,7 @@ class SprintViewSet(viewsets.ModelViewSet):
         sprint.save()
 
         # Move incomplete tasks back to backlog
-        incomplete_tasks = sprint.tasks.exclude(status='done')
-        for task in incomplete_tasks:
-            task.sprint = None
-            task.save()
+        sprint.tasks.exclude(status='done').update(sprint=None)
 
         return Response({
             'message': 'Sprint completed successfully. Incomplete tasks moved to backlog.',
