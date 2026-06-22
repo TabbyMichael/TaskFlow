@@ -1,0 +1,39 @@
+# ─── Python ────────────────────────────────────────────────────────────────────
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ─── Backend ───────────────────────────────────────────────────────────────────
+Backend/postgres_data/
+Backend/media/
+Backend/staticfiles/
+Backend/*.sqlite3
+Backend/.env
+
+# ─── Stale root tasks app (duplicate of Backend/tasks/) ───────────────────────
+tasks/
+
+# ─── Environment ───────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── IDE / Editor ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ─── Node / Frontend (fallback — Frontend/.gitignore is the source of truth) ──
+node_modules/
+
+# ─── Logs ──────────────────────────────────────────────────────────────────────
+*.log

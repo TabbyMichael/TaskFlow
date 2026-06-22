@@ -2,7 +2,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { User } from "@/shared/types";
-import { users } from "@/shared/api/mock-data";
 
 export function UserAvatar({ user, size = "sm", className }: { user?: User | null; size?: "xs" | "sm" | "md"; className?: string }) {
   const sizes = { xs: "h-5 w-5 text-[10px]", sm: "h-7 w-7 text-xs", md: "h-9 w-9 text-sm" };
@@ -21,7 +20,7 @@ export function UserAvatar({ user, size = "sm", className }: { user?: User | nul
   );
 }
 
-export function AvatarStack({ ids, max = 4, size = "sm" }: { ids: string[]; max?: number; size?: "xs" | "sm" | "md" }) {
+export function AvatarStack({ ids, users, max = 4, size = "sm" }: { ids: string[]; users: User[]; max?: number; size?: "xs" | "sm" | "md" }) {
   const visible = ids.slice(0, max);
   const overflow = ids.length - visible.length;
   return (

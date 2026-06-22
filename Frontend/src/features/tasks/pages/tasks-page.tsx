@@ -9,15 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TaskStatusBadge, PriorityBadge } from "@/shared/components/status-badges";
 import { UserAvatar } from "@/shared/components/user-avatar";
-import { tasks as allTasks, users, projects } from "@/shared/api/mock-data";
 import { formatDate } from "@/shared/utils/format";
 import { useDebounce } from "@/shared/hooks/use-debounce";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TaskDrawer } from "../components/task-drawer";
+import { useTasksList, useProjectsList, useMembersList } from "@/lib/api";
 import type { Task } from "@/shared/types";
 
 const PAGE_SIZE = 12;
 
 export function TasksPage() {
+  const { data: allTasks, isLoading: tasksLoading } = useTasksList();
+  const { data: projects } = useProjectsList();
+  const { data: members } = useMembersList();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [priority, setPriority] = useState("all");
@@ -29,6 +33,7 @@ export function TasksPage() {
   const debounced = useDebounce(query, 200);
 
   const filtered = useMemo(() => {
+    if (!allTasks) return [];
     let list = allTasks.filter((t) => {
       if (status !== "all" && t.status !== status) return false;
       if (priority !== "all" && t.priority !== priority) return false;
@@ -42,7 +47,7 @@ export function TasksPage() {
       return sort.dir === "asc" ? r : -r;
     });
     return list;
-  }, [debounced, status, priority, project, sort]);
+  }, [allTasks, debounced, status, priority, project, sort]);
 
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -54,7 +59,7 @@ export function TasksPage() {
     <div>
       <PageHeader
         title="Tasks"
-        description={`${filtered.length} tasks across ${projects.length} projects`}
+        description={`${filtered.length} tasks across ${projects?.length ?? 0} projects`}
         actions={<Button><Plus className="mr-1.5 h-4 w-4" /> New task</Button>}
       />
       <div className="space-y-4 p-4 md:p-6">
@@ -84,7 +89,7 @@ export function TasksPage() {
             <SelectTrigger className="w-44"><SelectValue placeholder="Project" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All projects</SelectItem>
-              {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              {projects?.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -115,21 +120,37 @@ export function TasksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paged.map((t) => {
-                const a = users.find((u) => u.id === t.assigneeId);
-                return (
-                  <TableRow key={t.id} className="cursor-pointer" onClick={() => setOpenTask(t)}>
-                    <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selected.has(t.id)} onCheckedChange={(c) => { const n = new Set(selected); c ? n.add(t.id) : n.delete(t.id); setSelected(n); }} /></TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{t.key}</TableCell>
-                    <TableCell className="max-w-md truncate font-medium">{t.title}</TableCell>
-                    <TableCell><PriorityBadge priority={t.priority} /></TableCell>
-                    <TableCell><TaskStatusBadge status={t.status} /></TableCell>
-                    <TableCell><div className="flex items-center gap-2"><UserAvatar user={a} size="xs" /><span className="text-sm">{a?.name}</span></div></TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(t.dueDate, "MMM d")}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{t.storyPoints}</TableCell>
+              {tasksLoading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 8 }).map((_, j) => (
+                      <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>
+                    ))}
                   </TableRow>
-                );
-              })}
+                ))
+              ) : filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
+                    No tasks match your filters. Create your first task.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paged.map((t) => {
+                  const a = members?.find((u) => u.id === t.assigneeId);
+                  return (
+                    <TableRow key={t.id} className="cursor-pointer" onClick={() => setOpenTask(t)}>
+                      <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selected.has(t.id)} onCheckedChange={(c) => { const n = new Set(selected); c ? n.add(t.id) : n.delete(t.id); setSelected(n); }} /></TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{t.key}</TableCell>
+                      <TableCell className="max-w-md truncate font-medium">{t.title}</TableCell>
+                      <TableCell><PriorityBadge priority={t.priority} /></TableCell>
+                      <TableCell><TaskStatusBadge status={t.status} /></TableCell>
+                      <TableCell><div className="flex items-center gap-2"><UserAvatar user={a} size="xs" /><span className="text-sm">{a?.name}</span></div></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formatDate(t.dueDate, "MMM d")}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{t.storyPoints}</TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </Card>
