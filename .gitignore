@@ -15,8 +15,8 @@ Backend/staticfiles/
 Backend/*.sqlite3
 Backend/.env
 
-# ─── Stale root tasks app (duplicate of Backend/tasks/) ───────────────────────
-tasks/
+# ─── Stale root tasks app (duplicate of Backend//tasks/) ───────────────────────
+/tasks/
 
 # ─── Environment ───────────────────────────────────────────────────────────────
 .env
