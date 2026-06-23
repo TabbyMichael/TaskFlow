@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,15 +8,45 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { TaskStatusBadge, PriorityBadge } from "@/shared/components/status-badges";
 import { UserAvatar } from "@/shared/components/user-avatar";
-import { users } from "@/shared/api/mock-data";
 import { relativeTime, formatBytes, formatDate } from "@/shared/utils/format";
-import type { Task } from "@/shared/types";
 import { Paperclip, Send } from "lucide-react";
+import { toast } from "sonner";
+import { useUpdateTask, useMembersList } from "@/lib/api";
+import { useAuthStore } from "@/app/store/auth-store";
+import type { Task } from "@/shared/types";
+import { apiPost } from "@/lib/api/client";
 
 export function TaskDrawer({ task, onClose }: { task: Task | null; onClose: () => void }) {
+  const { data: members } = useMembersList();
+  const updateTask = useUpdateTask();
+  const user = useAuthStore((s) => s.user);
+  const [commentText, setCommentText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
   if (!task) return null;
-  const assignee = users.find((u) => u.id === task.assigneeId);
-  const reporter = users.find((u) => u.id === task.reporterId);
+  const assignee = members?.find((u) => u.id === task.assigneeId);
+  const reporter = members?.find((u) => u.id === task.reporterId);
+
+  const handleAddComment = async () => {
+    if (!commentText.trim() || !user) return;
+    setSubmitting(true);
+    try {
+      await apiPost('/api/comments/', { task: task.id, body: commentText, authorId: user.id });
+      setCommentText("");
+      toast.success("Comment added");
+    } catch {
+      toast.error("Failed to add comment");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleChecklist = (itemId: string) => {
+    const updated = task.checklist.map((c) =>
+      c.id === itemId ? { ...c, done: !c.done } : c,
+    );
+    updateTask.mutate({ id: task.id, data: { checklist: updated } });
+  };
 
   return (
     <Sheet open={!!task} onOpenChange={(o) => !o && onClose()}>
@@ -47,7 +78,7 @@ export function TaskDrawer({ task, onClose }: { task: Task | null; onClose: () =
 
               <TabsContent value="comments" className="mt-4 space-y-4">
                 {task.comments.map((c) => {
-                  const author = users.find((u) => u.id === c.authorId);
+                  const author = members?.find((u) => u.id === c.authorId);
                   return (
                     <div key={c.id} className="flex gap-3">
                       <UserAvatar user={author} size="sm" />
@@ -58,13 +89,31 @@ export function TaskDrawer({ task, onClose }: { task: Task | null; onClose: () =
                     </div>
                   );
                 })}
-                <div className="flex gap-2"><Textarea placeholder="Add a comment…" rows={2} /><Button size="icon" className="h-auto"><Send className="h-4 w-4" /></Button></div>
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Add a comment…"
+                    rows={2}
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                  />
+                  <Button
+                    size="icon"
+                    className="h-auto"
+                    onClick={handleAddComment}
+                    disabled={submitting || !commentText.trim()}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
               </TabsContent>
 
               <TabsContent value="checklist" className="mt-4 space-y-2">
                 {task.checklist.map((c) => (
                   <label key={c.id} className="flex items-center gap-2 rounded-md p-2 hover:bg-muted/50">
-                    <Checkbox checked={c.done} />
+                    <Checkbox
+                      checked={c.done}
+                      onCheckedChange={() => handleToggleChecklist(c.id)}
+                    />
                     <span className={c.done ? "text-muted-foreground line-through" : ""}>{c.text}</span>
                   </label>
                 ))}
@@ -73,7 +122,7 @@ export function TaskDrawer({ task, onClose }: { task: Task | null; onClose: () =
 
               <TabsContent value="activity" className="mt-4 space-y-3">
                 {task.activity.map((a) => {
-                  const actor = users.find((u) => u.id === a.actorId);
+                  const actor = members?.find((u) => u.id === a.actorId);
                   return (
                     <div key={a.id} className="flex items-start gap-3 text-sm">
                       <UserAvatar user={actor} size="xs" />

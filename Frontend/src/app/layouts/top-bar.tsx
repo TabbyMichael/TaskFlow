@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useUIStore } from "@/app/store/ui-store";
 import { useAuthStore } from "@/app/store/auth-store";
-import { organizations, notifications } from "@/shared/api/mock-data";
+import { notifications } from "@/shared/api/mock-data";
 import { ROUTES } from "@/shared/constants/routes";
 
 export function TopBar() {
@@ -32,15 +32,13 @@ export function TopBar() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="hidden gap-2 sm:inline-flex">
             <Building2 className="h-4 w-4" />
-            <span className="text-sm font-medium">{organizations[0].name}</span>
-            <Badge variant="secondary" className="hidden text-[10px] md:inline-flex">{organizations[0].plan}</Badge>
+            <span className="text-sm font-medium">{user?.email?.split("@")[1] ?? "TaskFlow"}</span>
+            <Badge variant="secondary" className="hidden text-[10px] md:inline-flex">Enterprise</Badge>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuLabel>Organizations</DropdownMenuLabel>
-          {organizations.map((o) => (
-            <DropdownMenuItem key={o.id}>{o.name} <Badge variant="outline" className="ml-auto text-[10px]">{o.plan}</Badge></DropdownMenuItem>
-          ))}
+          <DropdownMenuItem>{user?.email?.split("@")[1] ?? "TaskFlow"} <Badge variant="outline" className="ml-auto text-[10px]">Enterprise</Badge></DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

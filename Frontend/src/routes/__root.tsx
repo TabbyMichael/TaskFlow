@@ -1,4 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useAuthStore } from "@/app/store/auth-store";
 import {
   Outlet, createRootRouteWithContext, HeadContent, Scripts,
 } from "@tanstack/react-router";
@@ -34,6 +36,12 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const initAuth = useAuthStore((s) => s.initAuth);
+
+  useEffect(() => {
+    initAuth();
+  }, [initAuth]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

@@ -11,12 +11,15 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ProjectStatusBadge } from "@/shared/components/status-badges";
 import { AvatarStack } from "@/shared/components/user-avatar";
-import { projects } from "@/shared/api/mock-data";
 import { ROUTES } from "@/shared/constants/routes";
 import { formatDate } from "@/shared/utils/format";
 import { useDebounce } from "@/shared/hooks/use-debounce";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useProjectsList, useMembersList } from "@/lib/api";
 
 export function ProjectsPage() {
+  const { data: projects, isLoading } = useProjectsList();
+  const { data: members } = useMembersList();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [sort, setSort] = useState<string>("dueDate");
@@ -24,6 +27,7 @@ export function ProjectsPage() {
   const debounced = useDebounce(query, 200);
 
   const filtered = useMemo(() => {
+    if (!projects) return [];
     let list = projects.filter((p) => {
       if (status !== "all" && p.status !== status) return false;
       if (debounced && !`${p.name} ${p.key}`.toLowerCase().includes(debounced.toLowerCase())) return false;
@@ -35,7 +39,39 @@ export function ProjectsPage() {
       return +new Date(a.dueDate) - +new Date(b.dueDate);
     });
     return list;
-  }, [debounced, status, sort]);
+  }, [projects, debounced, status, sort]);
+
+  if (isLoading) {
+    return (
+      <div>
+        <PageHeader title="Projects" description="All projects across your organization." />
+        <div className="grid gap-4 p-4 md:p-6 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}><CardContent className="space-y-4 p-5">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-4 w-24" />
+            </CardContent></Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!projects || projects.length === 0) {
+    return (
+      <div>
+        <PageHeader title="Projects" description="All projects across your organization."
+          actions={<Button><Plus className="mr-1.5 h-4 w-4" /> New project</Button>}
+        />
+        <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+          <p className="text-sm font-medium">No projects yet</p>
+          <p className="text-sm text-muted-foreground">Create your first project to get started.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -101,7 +137,7 @@ export function ProjectsPage() {
                       <Progress value={p.progress} className="h-1.5" />
                     </div>
                     <div className="flex items-center justify-between">
-                      <AvatarStack ids={p.memberIds} />
+                      <AvatarStack ids={p.memberIds ?? []} users={members ?? []} />
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <CalendarDays className="h-3 w-3" /> {formatDate(p.dueDate, "MMM d")}
                       </span>
@@ -139,7 +175,7 @@ export function ProjectsPage() {
                     <TableCell>
                       <div className="flex items-center gap-2"><Progress value={p.progress} className="h-1.5" /><span className="font-mono text-xs">{p.progress}%</span></div>
                     </TableCell>
-                    <TableCell><AvatarStack ids={p.memberIds} /></TableCell>
+                    <TableCell><AvatarStack ids={p.memberIds ?? []} users={members ?? []} /></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(p.dueDate)}</TableCell>
                   </TableRow>
                 ))}

@@ -1,0 +1,16 @@
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+.env
+.venv
+postgres_data
+media
+staticfiles
+.git
+.gitignore
+.dockerignore
+*.sqlite3

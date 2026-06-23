@@ -10,11 +10,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuthStore } from "@/app/store/auth-store";
 import { useUIStore } from "@/app/store/ui-store";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
+
+  const handleSave = () => toast.success("Settings saved (UI only — backend endpoint pending)");
+  const handlePasswordUpdate = () => toast.success("Password update endpoint pending");
 
   return (
     <div>
@@ -37,7 +41,7 @@ export function SettingsPage() {
                   <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" defaultValue={user?.email} /></div>
                   <div className="space-y-2"><Label htmlFor="title">Job title</Label><Input id="title" defaultValue={user?.title} /></div>
                 </div>
-                <div className="flex justify-end"><Button>Save changes</Button></div>
+                <div className="flex justify-end"><Button onClick={handleSave}>Save changes</Button></div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -47,7 +51,7 @@ export function SettingsPage() {
               <div className="space-y-2"><Label>Current</Label><Input type="password" /></div>
               <div className="space-y-2"><Label>New</Label><Input type="password" /></div>
               <div className="space-y-2"><Label>Confirm</Label><Input type="password" /></div>
-              <div className="sm:col-span-3 flex justify-end"><Button>Update password</Button></div>
+              <div className="sm:col-span-3 flex justify-end"><Button onClick={handlePasswordUpdate}>Update password</Button></div>
             </CardContent></Card>
             <Card><CardHeader><CardTitle className="text-sm">Two-factor authentication</CardTitle></CardHeader>
               <CardContent className="flex items-center justify-between"><div><p className="font-medium">Authenticator app</p><p className="text-sm text-muted-foreground">Use an app like 1Password or Authy.</p></div><Switch /></CardContent>
@@ -80,7 +84,7 @@ export function SettingsPage() {
                     <SelectContent><SelectItem value="en">English</SelectItem><SelectItem value="es">Español</SelectItem><SelectItem value="fr">Français</SelectItem><SelectItem value="ja">日本語</SelectItem></SelectContent>
                   </Select>
                 </div>
-                <div className="sm:col-span-3 flex justify-end"><Button>Save preferences</Button></div>
+                <div className="sm:col-span-3 flex justify-end"><Button onClick={handleSave}>Save preferences</Button></div>
               </CardContent>
             </Card>
           </TabsContent>

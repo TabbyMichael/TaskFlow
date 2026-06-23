@@ -1,0 +1,23 @@
+# ─── PostgreSQL data (isolated instance on port 5433) ───────────────────────
+postgres_data/
+
+# ─── Django generated / collected files ────────────────────────────────────
+media/
+staticfiles/
+*.sqlite3
+
+# ─── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# ─── Environment ────────────────────────────────────────────────────────────
+.env
+.env.local
+
+# ─── IDE ────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
