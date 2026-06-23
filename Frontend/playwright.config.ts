@@ -25,7 +25,7 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: "bun dev",
+        command: "VITE_API_URL=http://demo.localhost:8000 bun dev",
         url: BASE_URL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

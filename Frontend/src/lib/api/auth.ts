@@ -91,8 +91,10 @@ export async function getCurrentMember(): Promise<User | null> {
   const payload = decodeToken(token);
   if (!payload) return null;
 
-  const userId = payload.user_id as number | undefined;
-  if (userId == null) return null;
+  // SimpleJWT serialises the user id claim as a string; the members API
+  // returns it as a number, so compare both coerced to Number.
+  const userId = Number(payload.user_id);
+  if (!Number.isFinite(userId)) return null;
 
   try {
     const members =
