@@ -59,6 +59,7 @@ export function RegisterPage() {
 
       <form
         onSubmit={handleSubmit(onSubmit)}
+        noValidate
         className="space-y-4"
       >
         <div className="grid grid-cols-2 gap-3">

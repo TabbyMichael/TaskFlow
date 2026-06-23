@@ -16,14 +16,19 @@ describe("UserAvatar", () => {
 });
 
 describe("AvatarStack", () => {
+  const ids = ["u1", "u2", "u3", "u4", "u5"];
+  const users = ids.map((id) => makeUser({ id }));
+
   it("renders an overflow indicator past the max", async () => {
     // 5 real users, max 4 visible => "+1" overflow.
-    renderWithProviders(<AvatarStack ids={["u1", "u2", "u3", "u4", "u5"]} max={4} />);
+    renderWithProviders(<AvatarStack ids={ids} users={users} max={4} />);
     expect(await screen.findByText("+1")).toBeInTheDocument();
   });
 
   it("does not show overflow when ids fit within max", () => {
-    renderWithProviders(<AvatarStack ids={["u1", "u2"]} max={4} />);
+    renderWithProviders(
+      <AvatarStack ids={ids.slice(0, 2)} users={users} max={4} />,
+    );
     expect(screen.queryByText(/^\+/)).not.toBeInTheDocument();
   });
 });
