@@ -4,6 +4,7 @@ from django_tenants.utils import schema_context
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
+from django.db import connection
 from organizations.models import Organization, Domain
 from core.models import Member, Project
 from sprints.models import Sprint
@@ -13,6 +14,8 @@ User = get_user_model()
 
 class MultiTenantOnboardingTestCase(APITestCase):
     def setUp(self):
+        # Tenant schemas leak across test methods; reset before creating tenants.
+        connection.set_schema_to_public()
         # Ensure public tenant and domain exist for onboarding
         public_tenant, _ = Organization.objects.get_or_create(
             schema_name='public',
@@ -53,6 +56,7 @@ class MultiTenantOnboardingTestCase(APITestCase):
 
 class SchemaIsolationAndRBACTestCase(APITestCase):
     def setUp(self):
+        connection.set_schema_to_public()
         # 1. Ensure public schema
         self.public_tenant, _ = Organization.objects.get_or_create(
             schema_name='public',

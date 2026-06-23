@@ -4,6 +4,7 @@ from django_tenants.utils import schema_context
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
+from django.db import connection
 from organizations.models import Organization, Domain
 from core.models import Member, Project
 
@@ -11,6 +12,9 @@ User = get_user_model()
 
 
 def _ensure_public_tenant():
+    # Tenant schemas leak across test methods; tenant creation requires the
+    # connection to be on the public schema.
+    connection.set_schema_to_public()
     public_tenant, _ = Organization.objects.get_or_create(
         schema_name='public',
         name='Public Schema',
@@ -28,7 +32,6 @@ def _ensure_public_tenant():
         is_primary=False,
     )
     return public_tenant
-n
 
 class MemberInviteTestCase(APITestCase):
     def setUp(self):
@@ -71,12 +74,17 @@ class MemberInviteTestCase(APITestCase):
         url = '/api/members/invite/'
         resp = self.client.post(
             url,
-            {'email': 'newmember@test.com', 'role': 'member', 'title': 'Dev'},
+            {
+                'username': 'newmember',
+                'email': 'newmember@test.com',
+                'role': 'member',
+                'title': 'Dev',
+            },
             HTTP_HOST='invite.localhost',
             **headers,
         )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertTrue('message' in resp.data or 'detail' in resp.data)
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resp.data['role'], 'member')
 
     def test_admin_can_invite_existing_user(self):
         existing = User.objects.create_user(
@@ -88,11 +96,11 @@ class MemberInviteTestCase(APITestCase):
         url = '/api/members/invite/'
         resp = self.client.post(
             url,
-            {'email': 'existing@test.com', 'role': 'member'},
+            {'username': 'existing', 'email': 'existing@test.com', 'role': 'member'},
             HTTP_HOST='invite.localhost',
             **headers,
         )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
 
     def test_viewer_cannot_invite_member(self):
         viewer = User.objects.create_user(

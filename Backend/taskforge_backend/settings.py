@@ -31,6 +31,10 @@ SHARED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Outstanding/blacklisted JWTs are global to a user, so they live in the
+    # public schema (visible to every tenant via the search_path). This also
+    # lets token issuance work when authenticating against the public schema.
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 TENANT_APPS = [
@@ -40,7 +44,6 @@ TENANT_APPS = [
     'sprints',
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]

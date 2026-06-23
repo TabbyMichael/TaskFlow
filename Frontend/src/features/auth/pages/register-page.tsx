@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/app/store/auth-store";
 import {
   registerSchema,
+  type RegisterFormValues,
   type RegisterInput,
 } from "../schemas/auth-schema";
 import { ROUTES } from "@/shared/constants/routes";
@@ -18,7 +19,7 @@ export function RegisterPage() {
     register: f,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterInput>({
+  } = useForm<RegisterFormValues, unknown, RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       orgSlug: "",
