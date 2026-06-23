@@ -139,6 +139,7 @@ interface UpdateTaskPayload {
     storyPoints: number;
     dueDate: string | null;
     labels: string[];
+    checklist: Task["checklist"];
   }>;
 }
 

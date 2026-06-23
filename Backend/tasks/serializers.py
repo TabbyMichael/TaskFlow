@@ -4,12 +4,16 @@ from sprints.models import Sprint
 from .models import Task, Comment, ActivityItem, Attachment
 
 class CommentSerializer(serializers.ModelSerializer):
-    authorId = serializers.PrimaryKeyRelatedField(source='author', queryset=Member.objects.all())
+    # author is assigned from the authenticated member in the viewset.
+    authorId = serializers.PrimaryKeyRelatedField(
+        source='author', queryset=Member.objects.all(), required=False
+    )
+    task = serializers.PrimaryKeyRelatedField(queryset=Task.objects.all())
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
 
     class Meta:
         model = Comment
-        fields = ('id', 'authorId', 'body', 'createdAt')
+        fields = ('id', 'task', 'authorId', 'body', 'createdAt')
         read_only_fields = ('id', 'createdAt')
 
 

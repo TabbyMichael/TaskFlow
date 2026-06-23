@@ -20,7 +20,10 @@ export const registerSchema = z.object({
       "Only lowercase letters, numbers, and hyphens allowed",
     ),
 });
-export type RegisterInput = z.infer<typeof registerSchema>;
+// Input differs from output because `lastName` has a default; the form is typed
+// with the input shape and resolves to the output shape on submit.
+export type RegisterFormValues = z.input<typeof registerSchema>;
+export type RegisterInput = z.output<typeof registerSchema>;
 
 export const forgotSchema = z.object({ email: z.string().email("Enter a valid email") });
 export type ForgotInput = z.infer<typeof forgotSchema>;

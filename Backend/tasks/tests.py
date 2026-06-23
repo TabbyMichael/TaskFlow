@@ -4,6 +4,7 @@ from django_tenants.utils import schema_context
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
+from django.db import connection
 from organizations.models import Organization, Domain
 from core.models import Member, Project
 from sprints.models import Sprint
@@ -13,6 +14,9 @@ User = get_user_model()
 
 
 def _ensure_public_tenant():
+    # Tenant schemas leak across test methods; tenant creation requires the
+    # connection to be on the public schema.
+    connection.set_schema_to_public()
     public_tenant, _ = Organization.objects.get_or_create(
         schema_name='public',
         name='Public Schema',
@@ -30,7 +34,6 @@ def _ensure_public_tenant():
         is_primary=False,
     )
     return public_tenant
-n
 
 class TaskAPITestCase(APITestCase):
     def setUp(self):
@@ -85,7 +88,8 @@ class TaskAPITestCase(APITestCase):
             url,
             {
                 'title': 'New task',
-                'project': self.project.id,
+                'projectId': self.project.id,
+                'reporterId': self.member.id,
                 'status': 'todo',
                 'priority': 'medium',
             },
@@ -93,25 +97,29 @@ class TaskAPITestCase(APITestCase):
             **headers,
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Task.objects.count(), 1)
-        task = Task.objects.first()
+        with schema_context(self.tenant.schema_name):
+            self.assertEqual(Task.objects.count(), 1)
+            task = Task.objects.first()
         self.assertEqual(task.key, 'TT-1')
 
     def test_second_task_increments_key(self):
-        Task.objects.create(
-            project=self.project,
-            title='First',
-            key='TT-1',
-            status='todo',
-            priority='medium',
-        )
+        with schema_context(self.tenant.schema_name):
+            Task.objects.create(
+                project=self.project,
+                title='First',
+                key='TT-1',
+                status='todo',
+                priority='medium',
+                reporter=self.member,
+            )
         headers = self._auth_headers()
         url = reverse('task-list')
         resp = self.client.post(
             url,
             {
                 'title': 'Second',
-                'project': self.project.id,
+                'projectId': self.project.id,
+                'reporterId': self.member.id,
                 'status': 'todo',
                 'priority': 'medium',
             },
@@ -119,17 +127,20 @@ class TaskAPITestCase(APITestCase):
             **headers,
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        task2 = Task.objects.filter(title='Second').first()
+        with schema_context(self.tenant.schema_name):
+            task2 = Task.objects.filter(title='Second').first()
         self.assertEqual(task2.key, 'TT-2')
 
     def test_filter_tasks_by_project(self):
-        Task.objects.create(
-            project=self.project,
-            title='Project task',
-            key='TT-1',
-            status='todo',
-            priority='medium',
-        )
+        with schema_context(self.tenant.schema_name):
+            Task.objects.create(
+                project=self.project,
+                title='Project task',
+                key='TT-1',
+                status='todo',
+                priority='medium',
+                reporter=self.member,
+            )
         url = f"/api/tasks/?projectId={self.project.id}"
         resp = self.client.get(
             url,
@@ -140,13 +151,15 @@ class TaskAPITestCase(APITestCase):
         self.assertGreaterEqual(len(resp.data.get('results', resp.data)), 1)
 
     def test_update_task_status(self):
-        task = Task.objects.create(
-            project=self.project,
-            title='Updatable',
-            key='TT-1',
-            status='todo',
-            priority='medium',
-        )
+        with schema_context(self.tenant.schema_name):
+            task = Task.objects.create(
+                project=self.project,
+                title='Updatable',
+                key='TT-1',
+                status='todo',
+                priority='medium',
+                reporter=self.member,
+            )
         url = f"/api/tasks/{task.id}/"
         resp = self.client.patch(
             url,
@@ -160,13 +173,15 @@ class TaskAPITestCase(APITestCase):
         self.assertEqual(task.status, 'in_progress')
 
     def test_delete_task(self):
-        task = Task.objects.create(
-            project=self.project,
-            title='Deletable',
-            key='TT-1',
-            status='todo',
-            priority='medium',
-        )
+        with schema_context(self.tenant.schema_name):
+            task = Task.objects.create(
+                project=self.project,
+                title='Deletable',
+                key='TT-1',
+                status='todo',
+                priority='medium',
+                reporter=self.member,
+            )
         url = f"/api/tasks/{task.id}/"
         resp = self.client.delete(
             url,
@@ -174,17 +189,19 @@ class TaskAPITestCase(APITestCase):
             **self._auth_headers(),
         )
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(Task.objects.filter(id=task.id).count(), 0)
+        with schema_context(self.tenant.schema_name):
+            self.assertEqual(Task.objects.filter(id=task.id).count(), 0)
 
     def test_create_comment_logs_activity(self):
-        task = Task.objects.create(
-            project=self.project,
-            title='Commented',
-            key='TT-1',
-            status='todo',
-            priority='medium',
-            reporter=self.member,
-        )
+        with schema_context(self.tenant.schema_name):
+            task = Task.objects.create(
+                project=self.project,
+                title='Commented',
+                key='TT-1',
+                status='todo',
+                priority='medium',
+                reporter=self.member,
+            )
         url = reverse('comment-list')
         resp = self.client.post(
             url,
@@ -193,8 +210,9 @@ class TaskAPITestCase(APITestCase):
             **self._auth_headers(),
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Comment.objects.count(), 1)
-        self.assertEqual(ActivityItem.objects.filter(type='commented').count(), 1)
+        with schema_context(self.tenant.schema_name):
+            self.assertEqual(Comment.objects.count(), 1)
+            self.assertEqual(ActivityItem.objects.filter(type='commented').count(), 1)
 
     def test_rbac_viewer_cannot_create_task(self):
         viewer = User.objects.create_user(

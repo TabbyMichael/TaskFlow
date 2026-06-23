@@ -22,6 +22,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
+  ssr: false,
 });
 
 function RootShell({ children }: { children: ReactNode }) {

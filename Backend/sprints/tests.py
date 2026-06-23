@@ -4,6 +4,7 @@ from django_tenants.utils import schema_context
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
+from django.db import connection
 from organizations.models import Organization, Domain
 from core.models import Member, Project
 from .models import Sprint
@@ -13,6 +14,9 @@ User = get_user_model()
 
 
 def _ensure_public_tenant():
+    # Tenant schemas leak across test methods; tenant creation requires the
+    # connection to be on the public schema.
+    connection.set_schema_to_public()
     public_tenant, _ = Organization.objects.get_or_create(
         schema_name='public',
         name='Public Schema',
@@ -30,7 +34,6 @@ def _ensure_public_tenant():
         is_primary=False,
     )
     return public_tenant
-n
 
 class SprintAPITestCase(APITestCase):
     def setUp(self):
@@ -104,11 +107,12 @@ class SprintAPITestCase(APITestCase):
 
     def test_cannot_start_duplicate_active_sprint(self):
         headers = self._auth_headers()
-        Sprint.objects.create(
-            project=self.project,
-            name='Sprint Duplicate',
-            status='active',
-        )
+        with schema_context(self.tenant.schema_name):
+            Sprint.objects.create(
+                project=self.project,
+                name='Sprint Duplicate',
+                status='active',
+            )
         url = f"/api/sprints/{self.sprint.id}/start/"
         resp = self.client.post(
             url,
@@ -128,6 +132,7 @@ class SprintAPITestCase(APITestCase):
                 status='done',
                 priority='medium',
                 sprint=self.sprint,
+                reporter=self.member,
             )
             task_open = Task.objects.create(
                 project=self.project,
@@ -135,6 +140,7 @@ class SprintAPITestCase(APITestCase):
                 status='todo',
                 priority='medium',
                 sprint=self.sprint,
+                reporter=self.member,
             )
 
         url = f"/api/sprints/{self.sprint.id}/complete/"
