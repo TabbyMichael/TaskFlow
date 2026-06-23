@@ -17,7 +17,7 @@ export function ForgotPasswordPage() {
       {sent ? (
         <div className="rounded-md border border-success/40 bg-success/10 p-4 text-sm text-success">Check your inbox for the reset link.</div>
       ) : (
-        <form onSubmit={handleSubmit(() => setSent(true))} className="space-y-4">
+        <form onSubmit={handleSubmit(() => setSent(true))} noValidate className="space-y-4">
           <div className="space-y-2"><Label>Email</Label><Input type="email" {...register("email")} />{errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}</div>
           <Button type="submit" className="w-full">Send reset link</Button>
         </form>

@@ -15,7 +15,7 @@ export function RegisterPage() {
   return (
     <div className="space-y-6">
       <div><h1 className="text-2xl font-semibold tracking-tight">Create your workspace</h1><p className="mt-1 text-sm text-muted-foreground">Start in seconds — no card required.</p></div>
-      <form onSubmit={handleSubmit(async (d) => { await reg(d.name, d.email); navigate({ to: ROUTES.dashboard }); })} className="space-y-4">
+      <form onSubmit={handleSubmit(async (d) => { await reg(d.name, d.email); navigate({ to: ROUTES.dashboard }); })} noValidate className="space-y-4">
         <div className="space-y-2"><Label>Full name</Label><Input {...f("name")} />{errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}</div>
         <div className="space-y-2"><Label>Work email</Label><Input type="email" {...f("email")} />{errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}</div>
         <div className="space-y-2"><Label>Password</Label><Input type="password" {...f("password")} />{errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}</div>
