@@ -38,8 +38,10 @@ services:
       DEBUG: "False"
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY:-django-insecure-dev-key-change-in-production}
+      SECURE_SSL_REDIRECT: "False"
+      ALLOWED_HOSTS: ".localhost,localhost,127.0.0.1,backend,db,redis"
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./Backend:/app
     healthcheck:
@@ -53,7 +55,7 @@ services:
     build: ./Frontend
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "8080:8080"
     volumes:
