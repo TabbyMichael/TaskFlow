@@ -201,3 +201,90 @@ class SchemaIsolationAndRBACTestCase(APITestCase):
             activities = ActivityItem.objects.filter(task=task, type='commented')
             self.assertEqual(activities.count(), 1)
             self.assertEqual(activities.first().actor, self.member_mem)
+
+            self.assertEqual(activities.count(), 1)
+            self.assertEqual(activities.first().actor, self.member_mem)
+
+
+class ProjectModelTestCase(TestCase):
+    """
+    Tests for Project model: task_counter, invalidate_cache, and progress.
+    """
+
+    def setUp(self):
+        connection.set_schema_to_public()
+        public_tenant, _ = Organization.objects.get_or_create(
+            schema_name='public',
+            name='Public Schema',
+            slug='public',
+            plan='Enterprise',
+        )
+        Domain.objects.get_or_create(
+            domain='localhost',
+            tenant=public_tenant,
+            is_primary=True,
+        )
+        Domain.objects.get_or_create(
+            domain='testserver',
+            tenant=public_tenant,
+            is_primary=False,
+        )
+
+        self.user = User.objects.create_user(
+            username='projuser',
+            email='proj@test.com',
+            password='pass123',
+        )
+        self.tenant = Organization.objects.create(
+            schema_name='proj_test',
+            name='Proj Test',
+            slug='proj_test',
+            plan='Enterprise',
+        )
+        Domain.objects.create(
+            domain='proj.localhost',
+            tenant=self.tenant,
+            is_primary=True,
+        )
+
+        with schema_context(self.tenant.schema_name):
+            self.member = Member.objects.create(
+                user=self.user,
+                role='admin',
+                status='active',
+            )
+            self.project = Project.objects.create(
+                key='PJ',
+                name='Project Test',
+                lead=self.member,
+            )
+
+    def test_task_counter_starts_at_zero(self):
+        with schema_context(self.tenant.schema_name):
+            self.assertEqual(self.project.task_counter, 0)
+
+    def test_invalidate_cache_does_not_crash(self):
+        with schema_context(self.tenant.schema_name):
+            # Should not raise even when cache is empty
+            self.project.invalidate_cache()
+
+    def test_progress_zero_when_no_tasks(self):
+        with schema_context(self.tenant.schema_name):
+            self.assertEqual(self.project.progress, 0)
+
+    def test_progress_with_tasks(self):
+        with schema_context(self.tenant.schema_name):
+            from tasks.models import Task
+            Task.objects.create(
+                project=self.project,
+                title='Done',
+                status='done',
+                reporter=self.member,
+            )
+            Task.objects.create(
+                project=self.project,
+                title='Todo',
+                status='todo',
+                reporter=self.member,
+            )
+            self.assertEqual(self.project.progress, 50)

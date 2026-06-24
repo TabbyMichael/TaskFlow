@@ -2,7 +2,7 @@
 # Run locally with: woodpecker exec
 #
 # Setup: See https://woodpecker-ci.org/docs/administration/setup
-# Requires: PostgreSQL + Redis services running (use `docker compose up -d db redis`)
+# The pipeline starts PostgreSQL and Redis as sidecar services for the test steps.
 
 when:
   - event: [push, pull_request]
@@ -28,36 +28,44 @@ steps:
 
   test-backend:
     image: python:3.12-slim
+    services:
+      postgres:
+        image: postgres:17
+        environment:
+          POSTGRES_DB: taskforge_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+      redis:
+        image: redis:7-alpine
     environment:
-      DB_HOST: localhost
+      DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: taskforge_db
       DB_USER: postgres
       DB_PASSWORD: postgres
       DEBUG: "True"
       SECRET_KEY: test-secret-key
-      REDIS_URL: redis://localhost:6379/0
+      REDIS_URL: redis://redis:6379/0
     commands:
       - apt-get update -qq && apt-get install -y -qq postgresql-client
       - cd Backend
       - pip install -q -r requirements.txt
       - pip install -q pytest pytest-django
-      - while ! pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done
-      - python manage.py test --settings=tests.setup.test_settings
+      - while ! pg_isready -h postgres -p 5432 -U postgres; do sleep 1; done
+      - python manage.py test --noinput core.tests organizations.tests sprints.tests tasks.tests notifications.tests health.tests --settings=tests.setup.test_settings
 
   test-frontend:
     image: node:22-alpine
     commands:
       - cd Frontend
       - npm ci --no-audit --no-fund
-      - npm run build
       - npx vitest run --reporter=verbose
     when:
       - event: [push, pull_request]
         branch: [main, develop]
 
   build-docker:
-    image: docker:27
+    image: docker:27-dind
     commands:
       - docker build -t taskflow-backend:latest ./Backend
       - docker build -t taskflow-frontend:latest ./Frontend

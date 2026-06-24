@@ -35,7 +35,7 @@ lint-frontend:
 # ── Backend tests ────────────────────────────────────────────────────────────
 test-backend:
 	cd Backend && ../venv/bin/python manage.py test \
-		core.tests organizations.tests sprints.tests tasks.tests notifications.tests \
+		core.tests organizations.tests sprints.tests tasks.tests notifications.tests health.tests \
 		--settings=tests.setup.test_settings \
 		--verbosity=2
 

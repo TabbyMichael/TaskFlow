@@ -143,3 +143,30 @@ class NotificationAPITestCase(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 2)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 2)
+
+    def test_mark_all_read(self):
+        with schema_context(self.tenant.schema_name):
+            Notification.objects.create(recipient=self.member, type='assignment', title='N1')
+            Notification.objects.create(recipient=self.member, type='mention', title='N2')
+
+        # Obtain JWT token
+        response = self.client.post(
+            '/api/auth/token/', {'username': 'apiuser', 'password': 'pass'},
+            HTTP_HOST='localhost'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        token = response.data['access']
+
+        response = self.client.post(
+            '/api/notifications/mark_all_read/',
+            HTTP_AUTHORIZATION=f'Bearer {token}',
+            HTTP_HOST='napitest.localhost'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        with schema_context(self.tenant.schema_name):
+            unread = Notification.objects.filter(recipient=self.member, read=False).count()
+            self.assertEqual(unread, 0)

@@ -158,3 +158,101 @@ class SprintAPITestCase(APITestCase):
             self.assertIsNone(task_open.sprint)
             task_done.refresh_from_db()
             self.assertEqual(task_done.sprint, self.sprint)
+
+        with schema_context(self.tenant.schema_name):
+            task_open.refresh_from_db()
+            self.assertIsNone(task_open.sprint)
+            task_done.refresh_from_db()
+            self.assertEqual(task_done.sprint, self.sprint)
+
+
+class SprintModelCacheTestCase(TestCase):
+    """Tests for Sprint model Redis caching on total_points / completed_points."""
+
+    def setUp(self):
+        _ensure_public_tenant()
+
+        self.user = User.objects.create_user(
+            username='cacheuser',
+            email='cache@test.com',
+            password='testpass123',
+        )
+        self.tenant = Organization.objects.create(
+            schema_name='cache_test',
+            name='Cache Test',
+            slug='cache_test',
+        )
+        Domain.objects.create(
+            domain='cache.localhost',
+            tenant=self.tenant,
+            is_primary=True,
+        )
+
+        with schema_context(self.tenant.schema_name):
+            self.member = Member.objects.create(
+                user=self.user,
+                role='admin',
+                status='active',
+            )
+            self.project = Project.objects.create(
+                key='CA',
+                name='Cache Project',
+                lead=self.member,
+            )
+            self.sprint = Sprint.objects.create(
+                project=self.project,
+                name='Cache Sprint',
+                status='active',
+            )
+            Task.objects.create(
+                project=self.project,
+                title='Task 1',
+                status='done',
+                story_points=5,
+                sprint=self.sprint,
+                reporter=self.member,
+            )
+            Task.objects.create(
+                project=self.project,
+                title='Task 2',
+                status='todo',
+                story_points=3,
+                sprint=self.sprint,
+                reporter=self.member,
+            )
+
+    def test_total_points_returns_sum(self):
+        with schema_context(self.tenant.schema_name):
+            self.assertEqual(self.sprint.total_points, 8)
+
+    def test_completed_points_returns_done_only(self):
+        with schema_context(self.tenant.schema_name):
+            from django.core.cache import cache
+            cache.delete(f"sprint_completed_points_{self.sprint.pk}")
+            self.assertEqual(self.sprint.completed_points, 5)
+
+    def test_invalidate_cache_clears_total_points(self):
+        with schema_context(self.tenant.schema_name):
+            # Prime the cache
+            _ = self.sprint.total_points
+            self.sprint.invalidate_cache()
+            # After invalidation, should recompute (no crash)
+            self.assertEqual(self.sprint.total_points, 8)
+
+    def test_invalidate_cache_clears_completed_points(self):
+        with schema_context(self.tenant.schema_name):
+            # Prime the cache
+            _ = self.sprint.completed_points
+            self.sprint.invalidate_cache()
+            # After invalidation, should recompute (no crash)
+            self.assertEqual(self.sprint.completed_points, 5)
+
+    def test_total_points_zero_when_no_tasks(self):
+        with schema_context(self.tenant.schema_name):
+            empty_sprint = Sprint.objects.create(
+                project=self.project,
+                name='Empty Sprint',
+                status='planned',
+            )
+            self.assertEqual(empty_sprint.total_points, 0)
+            self.assertEqual(empty_sprint.completed_points, 0)
