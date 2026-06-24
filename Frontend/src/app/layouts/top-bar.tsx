@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useUIStore } from "@/app/store/ui-store";
 import { useAuthStore } from "@/app/store/auth-store";
-import { notifications } from "@/shared/api/mock-data";
+import { useNotificationsList } from "@/lib/api";
 import { ROUTES } from "@/shared/constants/routes";
 
 export function TopBar() {
@@ -20,6 +20,7 @@ export function TopBar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const { data: notifications = [] } = useNotificationsList();
   const unread = notifications.filter((n) => !n.read).length;
 
   return (

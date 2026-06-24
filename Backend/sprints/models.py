@@ -26,14 +26,34 @@ class Sprint(models.Model):
     @property
     def total_points(self):
         """Total story points for all tasks in this sprint (single DB query)."""
-        return self.tasks.aggregate(total=Sum('story_points'))['total'] or 0
+        from django.core.cache import cache
+        cache_key = f"sprint_total_points_{self.pk}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        result = self.tasks.aggregate(total=Sum('story_points'))['total'] or 0
+        cache.set(cache_key, result, 300)  # Cache for 5 minutes
+        return result
 
     @property
     def completed_points(self):
         """Story points completed (status='done') in this sprint (single DB query)."""
-        return self.tasks.filter(status='done').aggregate(
+        from django.core.cache import cache
+        cache_key = f"sprint_completed_points_{self.pk}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        result = self.tasks.filter(status='done').aggregate(
             total=Sum('story_points')
         )['total'] or 0
+        cache.set(cache_key, result, 300)  # Cache for 5 minutes
+        return result
+
+    def invalidate_cache(self):
+        """Invalidate cached computed properties."""
+        from django.core.cache import cache
+        cache.delete(f"sprint_total_points_{self.pk}")
+        cache.delete(f"sprint_completed_points_{self.pk}")
 
     def __str__(self):
         return f"{self.name} ({self.status})"

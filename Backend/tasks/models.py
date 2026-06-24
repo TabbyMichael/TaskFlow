@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models import F
+from django.core.exceptions import ValidationError
 from core.models import Member, Project
 from sprints.models import Sprint
 
@@ -54,11 +56,34 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def clean(self):
+        """Validate labels and checklist JSON structure."""
+        super().clean()
+        if self.labels and not isinstance(self.labels, list):
+            raise ValidationError({'labels': 'Must be a list of strings.'})
+        if self.labels:
+            for label in self.labels:
+                if not isinstance(label, str):
+                    raise ValidationError({'labels': 'Each label must be a string.'})
+        if self.checklist and not isinstance(self.checklist, list):
+            raise ValidationError({'checklist': 'Must be a list of objects with "name" and "done" keys.'})
+        if self.checklist:
+            for item in self.checklist:
+                if not isinstance(item, dict):
+                    raise ValidationError({'checklist': 'Each checklist item must be an object.'})
+                if 'name' not in item or 'done' not in item:
+                    raise ValidationError({'checklist': 'Each item must have "name" and "done" keys.'})
+                if not isinstance(item['done'], bool):
+                    raise ValidationError({'checklist': '"done" must be a boolean.'})
+
     def save(self, *args, **kwargs):
-        # Auto-generate key if not set, based on project key and project task count
+        # Auto-generate key if not set, using project's task_counter for atomic increment
         if not self.key:
-            task_count = Task.objects.filter(project=self.project).count()
-            self.key = f"{self.project.key}-{task_count + 1}"
+            # Atomically increment the project's task_counter
+            Project.objects.filter(pk=self.project.pk).update(task_counter=F('task_counter') + 1)
+            # Refresh from DB to get the new counter value
+            self.project.refresh_from_db()
+            self.key = f"{self.project.key}-{self.project.task_counter}"
         super().save(*args, **kwargs)
 
     def __str__(self):

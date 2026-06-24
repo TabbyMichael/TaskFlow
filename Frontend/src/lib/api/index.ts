@@ -63,6 +63,15 @@ export {
   useCompleteSprint,
 } from './sprints';
 
+
+// ─── Notifications ──────────────────────────────────────────────────────────
+export {
+  notificationKeys,
+  useNotificationsList,
+  useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+} from './notifications';
+
 // ─── Members ─────────────────────────────────────────────────────────────────
 export {
   memberKeys,

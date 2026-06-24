@@ -1,6 +1,6 @@
 # TaskFlow: Enterprise Work Management Platform
 
-TaskFlow is an enterprise-grade work management platform built with React, TypeScript, Ruby on Rails, PostgreSQL, Redis, and Sidekiq. It features multi-tenancy, RBAC, Kanban boards, sprint planning, real-time collaboration, notifications, audit logs, analytics, and scalable API architecture following modern software engineering best practices.
+TaskFlow is an enterprise-grade work management platform built with React, TypeScript, Django, PostgreSQL, Redis, and Celery. It features multi-tenancy, RBAC, Kanban boards, sprint planning, real-time collaboration, notifications, audit logs, analytics, and scalable API architecture following modern software engineering best practices.
 
 ---
 
@@ -11,17 +11,17 @@ TaskFlow is engineered as a production-ready SaaS solution, prioritizing scalabi
 
 ## 🛠 Tech Stack
 * **Frontend:** React 19, TypeScript, TanStack Query, Zustand, Tailwind CSS, Shadcn UI
-* **Backend:** Ruby on Rails 8 (API-only), PostgreSQL, Redis, Sidekiq, ActionCable
+* **Backend:** Django 6.0, Django REST Framework, PostgreSQL, Redis, Celery, Django Channels
 * **Infrastructure:** Docker, GitHub Actions, AWS
 
 ---
 
 ## 🏗 Key Engineering Features
 * **Multi-Tenant Architecture:** Isolated data ownership per organization.
-* **Granular RBAC:** Role-Based Access Control using Pundit.
+* **Granular RBAC:** Role-Based Access Control using custom permission classes.
 * **Event-Driven Design:** Decoupled architecture using domain events for notifications and audit logging.
-* **Real-Time Collaboration:** Powered by Rails ActionCable and WebSockets.
-* **Background Processing:** Resilient job queue management via Sidekiq.
+* **Real-Time Collaboration:** Powered by Django Channels and WebSockets.
+* **Background Processing:** Resilient job queue management via Celery.
 * **Full-Text Search:** High-performance search powered by PostgreSQL.
 
 ---
@@ -29,8 +29,8 @@ TaskFlow is engineered as a production-ready SaaS solution, prioritizing scalabi
 ## 🚀 Getting Started
 1. **Clone the repository:** `git clone https://github.com/your-org/TaskForge.git`
 2. **Launch Infrastructure:** `docker-compose up --build`
-3. **Initialize Backend:** `cd backend && rails db:setup && rails s`
-4. **Initialize Frontend:** `cd frontend && bun install && bun dev`
+3. **Initialize Backend:** `cd Backend && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python manage.py migrate && python manage.py runserver`
+4. **Initialize Frontend:** `cd Frontend && npm install && npm run dev`
 
 ---
 

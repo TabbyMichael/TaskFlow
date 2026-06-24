@@ -2,12 +2,10 @@ asgiref==3.11.1
 Django==6.0.5
 django-cors-headers==4.9.0
 django-tenants==3.10.1
-django-ratelimit==4.1.0
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
-drf-spectacular==0.28.0
 psycopg2-binary==2.9.12
 PyJWT==2.13.0
 python-decouple==3.8
-sentry-sdk==2.10.0
 sqlparse==0.5.5
+django-ratelimit==4.1.0

@@ -1,0 +1,66 @@
+# Woodpecker CI configuration — free, self-hosted CI/CD
+# Run locally with: woodpecker exec
+#
+# Setup: See https://woodpecker-ci.org/docs/administration/setup
+# Requires: PostgreSQL + Redis services running (use `docker compose up -d db redis`)
+
+when:
+  - event: [push, pull_request]
+    branch: [main, develop]
+
+steps:
+  lint-backend:
+    image: python:3.12-slim
+    commands:
+      - cd Backend
+      - pip install -q flake8 black
+      - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      - flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - black --check .
+
+  lint-frontend:
+    image: node:22-alpine
+    commands:
+      - cd Frontend
+      - npm ci --no-audit --no-fund
+      - npm run lint
+      - npx prettier --check .
+
+  test-backend:
+    image: python:3.12-slim
+    environment:
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: taskforge_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DEBUG: "True"
+      SECRET_KEY: test-secret-key
+      REDIS_URL: redis://localhost:6379/0
+    commands:
+      - apt-get update -qq && apt-get install -y -qq postgresql-client
+      - cd Backend
+      - pip install -q -r requirements.txt
+      - pip install -q pytest pytest-django
+      - while ! pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done
+      - python manage.py test --settings=tests.setup.test_settings
+
+  test-frontend:
+    image: node:22-alpine
+    commands:
+      - cd Frontend
+      - npm ci --no-audit --no-fund
+      - npm run build
+      - npx vitest run --reporter=verbose
+    when:
+      - event: [push, pull_request]
+        branch: [main, develop]
+
+  build-docker:
+    image: docker:27
+    commands:
+      - docker build -t taskflow-backend:latest ./Backend
+      - docker build -t taskflow-frontend:latest ./Frontend
+    when:
+      - event: push
+        branch: [main, develop]
