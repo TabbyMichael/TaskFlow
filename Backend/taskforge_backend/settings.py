@@ -15,9 +15,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ---------------------------------------------------------------------------
 # Security
 # ---------------------------------------------------------------------------
+# In production, set SECRET_KEY via environment variable.
+# The current default is only suitable for local development.
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-production')
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='.localhost,localhost,127.0.0.1', cast=Csv())
+
+# Security headers
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 # ---------------------------------------------------------------------------
 # Application definition
@@ -26,14 +38,17 @@ SHARED_APPS = [
     'django_tenants',
     'organizations',
     'corsheaders',
+    'health',
     'django.contrib.contenttypes',
     'django.contrib.auth',
     'django.contrib.sessions',
     'django.contrib.messages',
+    # SimpleJWT token blacklist references the shared AUTH_USER_MODEL, so its
+    # tables must live in the public schema (login/token-refresh always happen
+    # on the public host). Keeping it in TENANT_APPS made login crash with
+    # "relation token_blacklist_outstandingtoken does not exist".
+    'django_ratelimit',
     'django.contrib.staticfiles',
-    # Outstanding/blacklisted JWTs are global to a user, so they live in the
-    # public schema (visible to every tenant via the search_path). This also
-    # lets token issuance work when authenticating against the public schema.
     'rest_framework_simplejwt.token_blacklist',
 ]
 
@@ -42,11 +57,12 @@ TENANT_APPS = [
     'core',
     'tasks',
     'sprints',
+    'notifications',
     'rest_framework',
     'rest_framework_simplejwt',
 ]
 
-INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]
+INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS] + ['drf_spectacular']
 
 ROOT_URLCONF = 'taskforge_backend.urls'
 PUBLIC_SCHEMA_URLCONF = 'taskforge_backend.urls_public'
@@ -71,6 +87,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'taskforge_backend.middleware.RequestLoggingMiddleware',
 ]
 
 # ---------------------------------------------------------------------------
@@ -84,6 +101,10 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default='password'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5433'),
+        'CONN_MAX_AGE': 600,  # Connection pooling (10 minutes)
+        'OPTIONS': {
+            'connect_timeout': 10,
+        },
     }
 }
 
@@ -118,6 +139,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # ---------------------------------------------------------------------------
@@ -178,3 +200,91 @@ TEMPLATES = [
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Cache (used by django-ratelimit and session store)
+# ---------------------------------------------------------------------------
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_URL,
+    },
+}
+# Logging
+# ---------------------------------------------------------------------------
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Rate limiting (auth endpoints)
+# ---------------------------------------------------------------------------
+RATELIMIT_ENABLE = not DEBUG
+
+# ---------------------------------------------------------------------------
+# DRF Spectacular (OpenAPI/Swagger)
+# ---------------------------------------------------------------------------
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'TaskFlow API',
+    'DESCRIPTION': 'Enterprise Work Management Platform API',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+    },
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SORT_OPERATIONS': False,
+}
+
+# ---------------------------------------------------------------------------
+# Sentry (Error Tracking)
+# ---------------------------------------------------------------------------
+SENTRY_DSN = config('SENTRY_DSN', default='')
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        environment=config('ENVIRONMENT', default='development'),
+        traces_sample_rate=1.0 if DEBUG else 0.1,
+        profiles_sample_rate=1.0 if DEBUG else 0.1,
+        send_default_pii=False,
+    )

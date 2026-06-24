@@ -56,6 +56,7 @@ class Project(models.Model):
     )
     members = models.ManyToManyField(Member, related_name='projects', blank=True)
     color = models.CharField(max_length=20, default='#6366f1')
+    task_counter = models.IntegerField(default=0, help_text="Auto-incrementing counter for task key generation")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -66,6 +67,11 @@ class Project(models.Model):
             return 0
         done_tasks = self.tasks.filter(status='done').count()
         return int((done_tasks / total_tasks) * 100)
+
+    def invalidate_cache(self):
+        """Invalidate cached computed properties."""
+        from django.core.cache import cache
+        cache.delete(f"project_progress_{self.pk}")
 
     def __str__(self):
         return f"{self.name} [{self.key}]"
